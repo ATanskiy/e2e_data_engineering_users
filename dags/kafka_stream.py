@@ -1,65 +1,87 @@
-import uuid
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from kafka import KafkaProducer
+
+import json
+import requests
+import uuid
+import time
+import logging
+import psycopg2
+
 
 default_args = {
     'owner': 'airscholar',
-    'start_date': datetime(2023, 9, 3, 10, 00)
+    'start_date': datetime(2025, 4, 15, 10, 00)
 }
 
 def get_data():
-    import requests
+    response = requests.get('https://randomuser.me/api/')
+    data = response.json().get('results')
 
-    res = requests.get("https://randomuser.me/api/")
-    res = res.json()
-    res = res['results'][0]
+    # return data
+    return data
 
-    return res
-
-def format_data(res):
+def format_data(response):
     data = {}
-    location = res['location']
-    data['id'] = uuid.uuid4()
-    data['first_name'] = res['name']['first']
-    data['last_name'] = res['name']['last']
-    data['gender'] = res['gender']
-    data['address'] = f"{str(location['street']['number'])} {location['street']['name']}, " \
-                      f"{location['city']}, {location['state']}, {location['country']}"
-    data['post_code'] = location['postcode']
-    data['email'] = res['email']
-    data['username'] = res['login']['username']
-    data['dob'] = res['dob']['date']
-    data['registered_date'] = res['registered']['date']
-    data['phone'] = res['phone']
-    data['picture'] = res['picture']['medium']
 
+    #to process
+    data['data'] = response
+
+    #return data
     return data
 
 def stream_data():
-    import json
-    from kafka import KafkaProducer
-    import time
-    import logging
+    current_time = time.time()
 
-    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
-    curr_time = time.time()
+    # Connect to Postgres
+    try:
+        conn = psycopg2.connect(
+            dbname='users_raw',
+            user='airflow',  # Replace with your user
+            password='airflow',  # Replace with your password
+            host='postgres',  # Use the container service name
+            port='5432'
+        )
+        conn.autocommit = True
+        cursor = conn.cursor()
+
+        # Create table if not exists
+        cursor.execute("""
+                CREATE TABLE IF NOT EXISTS public.users_raw (
+                    user_id UUID PRIMARY KEY,
+                    raw_api_data JSONB
+                );
+            """)
+    except Exception as db_conn_error:
+        logging.error(f"Postgres connection error: {db_conn_error}")
 
     while True:
-        if time.time() > curr_time + 60: #1 minute
+        if time.time() > current_time + 60: #1 minute
             break
         try:
-            res = get_data()
-            res = format_data(res)
+            response = format_data(get_data())
+            producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=500)
+            producer.send('users_created', json.dumps(response).encode('utf-8'))
 
-            producer.send('users_created', json.dumps(res).encode('utf-8'))
+            # Insert into Postgres
+            insert_query = """
+                            INSERT INTO public.users_raw (user_id, raw_api_data)
+                            VALUES (%s, %s);
+                        """
+            cursor.execute(insert_query, (str(uuid.uuid4()), json.dumps(response)))
+
         except Exception as e:
             logging.error(f'An error occured: {e}')
             continue
 
+    # cursor.close()
+    # conn.close()
+
 with DAG('user_automation',
          default_args=default_args,
-         schedule_interval='@daily',
+         schedule_interval='@hourly',
          catchup=False) as dag:
 
     streaming_task = PythonOperator(

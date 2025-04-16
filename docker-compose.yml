@@ -1,3 +1,4 @@
+
 version: '3'
 
 services:
@@ -75,7 +76,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-  
+
   control-center:
     image: confluentinc/cp-enterprise-control-center:7.4.0
     hostname: control-center
@@ -129,7 +130,7 @@ services:
       test: ['CMD-SHELL', "[ -f /opt/airflow/airflow-webserver.pid ]"]
       interval: 30s
       timeout: 30s
-      retries: 3
+      retries: 10
     networks:
       - confluent
 
@@ -157,6 +158,8 @@ services:
       - POSTGRES_USER=airflow
       - POSTGRES_PASSWORD=airflow
       - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
     logging:
       options:
         max-size: 10m
@@ -198,5 +201,16 @@ services:
       - CASSANDRA_PASSWORD=cassandra
     networks:
       - confluent
+
+  kafka-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.kafka_consumer
+    depends_on:
+      - broker
+      - postgres
+    networks:
+      - confluent
+
 networks:
   confluent:
