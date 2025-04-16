@@ -1,40 +1,28 @@
+import json
+import requests
+import time
+import logging
+import psycopg2
+
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from kafka import KafkaProducer
 
-import json
-import requests
-import uuid
-import time
-import logging
-import psycopg2
-
 
 default_args = {
-    'owner': 'airscholar',
+    'owner': 'alextanskii',
     'start_date': datetime(2025, 4, 15, 10, 00)
 }
 
+# get and return data from API
 def get_data():
     response = requests.get('https://randomuser.me/api/')
-    data = response.json().get('results')
+    data = response.json().get('results')[0]
 
-    # return data
     return data
 
-def format_data(response):
-    data = {}
-
-    #to process
-    data['data'] = response
-
-    #return data
-    return data
-
-def stream_data():
-    current_time = time.time()
-
+def connect_to_postgress_users_raw():
     # Connect to Postgres
     try:
         conn = psycopg2.connect(
@@ -49,35 +37,49 @@ def stream_data():
 
         # Create table if not exists
         cursor.execute("""
-                CREATE TABLE IF NOT EXISTS public.users_raw (
-                    user_id UUID PRIMARY KEY,
-                    raw_api_data JSONB
-                );
-            """)
+                    CREATE TABLE IF NOT EXISTS public.users_raw (
+                        user_id SERIAL PRIMARY KEY,
+                        raw_api_data JSONB
+                    );
+                """)
+        return conn, cursor
     except Exception as db_conn_error:
         logging.error(f"Postgres connection error: {db_conn_error}")
+        return None, None
 
-    while True:
-        if time.time() > current_time + 60: #1 minute
-            break
+def insert_into_users_raw(cursor, data):
+    try:
+        # Insert into Postgres
+        cursor.execute("""
+            INSERT INTO public.users_raw (raw_api_data)
+            VALUES (%s);
+        """, (json.dumps(data),))
+    except Exception as e:
+        logging.error(f'An error occured: {e}')
+
+def send_to_kafka(producer, data):
+    try:
+        producer.send('users_created', json.dumps(data).encode('utf-8'))
+    except Exception as e:
+        logging.error(f"Failed to send to Kafka: {e}")
+
+def stream_data():
+    current_time = time.time()
+    conn, cursor = connect_to_postgress_users_raw()
+    if not conn or not cursor:
+        return
+
+    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=500)
+
+    while time.time() < current_time + 60: #1 minute
+
         try:
-            response = format_data(get_data())
-            producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=500)
-            producer.send('users_created', json.dumps(response).encode('utf-8'))
-
-            # Insert into Postgres
-            insert_query = """
-                            INSERT INTO public.users_raw (user_id, raw_api_data)
-                            VALUES (%s, %s);
-                        """
-            cursor.execute(insert_query, (str(uuid.uuid4()), json.dumps(response)))
-
+            response = get_data()
+            send_to_kafka(producer, response)
+            insert_into_users_raw(cursor, response)
         except Exception as e:
             logging.error(f'An error occured: {e}')
             continue
-
-    # cursor.close()
-    # conn.close()
 
 with DAG('user_automation',
          default_args=default_args,
