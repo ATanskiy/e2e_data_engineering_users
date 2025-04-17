@@ -39,6 +39,7 @@ def connect_to_postgress_users_raw():
         cursor.execute("""
                     CREATE TABLE IF NOT EXISTS public.users_raw (
                         user_id SERIAL PRIMARY KEY,
+                        inserted_at TIMESTAMPTZ DEFAULT NOW(),
                         raw_api_data JSONB
                     );
                 """)
