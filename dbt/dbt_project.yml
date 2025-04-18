@@ -9,5 +9,3 @@ clean-targets: ["target", "dbt_modules"]
 
 models:
   +materialized: incremental
-  +schema: users
-  +alias: users
