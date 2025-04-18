@@ -211,6 +211,19 @@ services:
     networks:
       - confluent
 
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.6.6
+    container_name: dbt
+    depends_on:
+      - postgres
+    volumes:
+      - .:/usr/app
+      - ./dbt/.dbt:/root/.dbt
+    working_dir: /usr/app                # 👈 This now directly contains dbt_project.yml
+    entrypoint: [ "tail", "-f", "/dev/null" ]
+    networks:
+      - confluent
+
 networks:
   confluent:
 

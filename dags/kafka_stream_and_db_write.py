@@ -26,7 +26,7 @@ def connect_to_postgress_users_raw():
     # Connect to Postgres
     try:
         conn = psycopg2.connect(
-            dbname='users_raw',
+            dbname='users',
             user='airflow',  # Replace with your user
             password='airflow',  # Replace with your password
             host='postgres',  # Use the container service name
@@ -37,7 +37,7 @@ def connect_to_postgress_users_raw():
 
         # Create table if not exists
         cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS public.users_raw (
+                    CREATE TABLE IF NOT EXISTS users_raw.users_raw (
                         user_id SERIAL PRIMARY KEY,
                         inserted_at TIMESTAMPTZ DEFAULT NOW(),
                         raw_api_data JSONB
@@ -52,7 +52,7 @@ def insert_into_users_raw(cursor, data):
     try:
         # Insert into Postgres
         cursor.execute("""
-            INSERT INTO public.users_raw (raw_api_data)
+            INSERT INTO users_raw.users_raw (raw_api_data)
             VALUES (%s);
         """, (json.dumps(data),))
     except Exception as e:

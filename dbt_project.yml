@@ -1,0 +1,13 @@
+name: 'my_project'
+version: '1.0.0'
+profile: 'my_project'
+
+model-paths: ["models"]#
+
+target-path: "target"
+clean-targets: ["target", "dbt_modules"]
+
+models:
+  +materialized: incremental
+  +schema: users
+  +alias: users
