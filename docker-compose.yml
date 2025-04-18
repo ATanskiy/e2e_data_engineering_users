@@ -200,17 +200,7 @@ services:
       - CASSANDRA_PASSWORD=cassandra
     networks:
       - confluent
-
-  kafka-consumer:
-    build:
-      context: .
-      dockerfile: Dockerfile.kafka_consumer
-    depends_on:
-      - broker
-      - postgres
-    networks:
-      - confluent
-
+      
   dbt:
     image: ghcr.io/dbt-labs/dbt-postgres:1.6.6
     container_name: dbt
@@ -219,7 +209,7 @@ services:
     volumes:
       - .:/usr/app
       - ./dbt/.dbt:/root/.dbt
-    working_dir: /usr/app                # 👈 This now directly contains dbt_project.yml
+    working_dir: /usr/app/dbt                # 👈 This now directly contains dbt_project.yml
     entrypoint: [ "tail", "-f", "/dev/null" ]
     networks:
       - confluent

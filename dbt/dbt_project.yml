@@ -1,6 +1,6 @@
-name: 'my_project'
+name: 'e2e_data_engineering'
 version: '1.0.0'
-profile: 'my_project'
+profile: 'e2e_data_engineering'
 
 model-paths: ["models"]#
 

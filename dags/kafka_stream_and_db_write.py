@@ -35,6 +35,11 @@ def connect_to_postgress_users_raw():
         conn.autocommit = True
         cursor = conn.cursor()
 
+        # Create schema if it doesn't exist
+        cursor.execute("""
+                    CREATE SCHEMA IF NOT EXISTS users_raw;
+                """)
+
         # Create table if not exists
         cursor.execute("""
                     CREATE TABLE IF NOT EXISTS users_raw.users_raw (

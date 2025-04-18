@@ -1,4 +1,4 @@
-my_project:
+e2e_data_engineering:
   target: dev
   outputs:
     dev:
