@@ -91,12 +91,12 @@ def stream_data():
             logging.error(f'An error occured: {e}')
             continue
 
-with DAG('user_automation',
+with DAG('insertion_users_raw',
          default_args=default_args,
          schedule_interval='@hourly',
          catchup=False) as dag:
 
-    streaming_task = PythonOperator(
+    fetch_and_insert_raw = PythonOperator(
         task_id='stream_data_from_api',
         python_callable=stream_data
     )
