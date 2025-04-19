@@ -112,7 +112,8 @@ services:
       - LOAD_EX=n
       - EXECUTOR=Sequential
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
+    env_file:
+      - .env
     logging:
       options:
         max-size: 10m
@@ -121,6 +122,8 @@ services:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
       - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./dbt:/usr/app/dbt
+      - ./dbt/.dbt:/root/.dbt
     ports:
       - "8080:8080"
     healthcheck:
@@ -140,11 +143,14 @@ services:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
       - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./dbt:/usr/app/dbt
+      - ./dbt/.dbt:/root/.dbt
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
+    env_file:
+      - .env
     command: bash -c "pip install -r ./requirements.txt && airflow db upgrade && airflow scheduler"
     networks:
       - confluent

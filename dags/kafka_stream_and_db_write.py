@@ -40,6 +40,10 @@ def connect_to_postgress_users_raw():
                     CREATE SCHEMA IF NOT EXISTS users_raw;
                 """)
 
+        cursor.execute("""
+                            CREATE SCHEMA IF NOT EXISTS users;
+                        """)
+
         # Create table if not exists
         cursor.execute("""
                     CREATE TABLE IF NOT EXISTS users_raw.users_raw (
