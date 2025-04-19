@@ -112,7 +112,8 @@ services:
       - LOAD_EX=n
       - EXECUTOR=Sequential
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
+    env_file:
+      - .env
     logging:
       options:
         max-size: 10m
@@ -121,6 +122,8 @@ services:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
       - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./dbt:/usr/app/dbt
+      - ./dbt/.dbt:/root/.dbt
     ports:
       - "8080:8080"
     healthcheck:
@@ -140,11 +143,14 @@ services:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
       - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./dbt:/usr/app/dbt
+      - ./dbt/.dbt:/root/.dbt
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
+    env_file:
+      - .env
     command: bash -c "pip install -r ./requirements.txt && airflow db upgrade && airflow scheduler"
     networks:
       - confluent
@@ -200,14 +206,17 @@ services:
       - CASSANDRA_PASSWORD=cassandra
     networks:
       - confluent
-
-  kafka-consumer:
-    build:
-      context: .
-      dockerfile: Dockerfile.kafka_consumer
+      
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.6.6
+    container_name: dbt
     depends_on:
-      - broker
       - postgres
+    volumes:
+      - .:/usr/app
+      - ./dbt/.dbt:/root/.dbt
+    working_dir: /usr/app/dbt                # 👈 This now directly contains dbt_project.yml
+    entrypoint: [ "tail", "-f", "/dev/null" ]
     networks:
       - confluent
 

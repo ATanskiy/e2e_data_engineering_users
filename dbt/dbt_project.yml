@@ -1,0 +1,11 @@
+name: 'e2e_data_engineering'
+version: '1.0.0'
+profile: 'e2e_data_engineering'
+
+model-paths: ["models"]#
+
+target-path: "target"
+clean-targets: ["target", "dbt_modules"]
+
+models:
+  +materialized: incremental
